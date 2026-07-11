@@ -67,6 +67,8 @@ export default {
   },
   data() {
     return {
+      themeDark: false,
+      themeObserver: null,
       list: {
         data: [],
         loading: false,
@@ -93,17 +95,42 @@ export default {
       let externalConfigs = {}
       if (Object.prototype.toString.call(this.configs) === '[object String]') {
         externalConfigs = JSON.parse(this.configs)
+      } else if (Object.prototype.toString.call(this.configs) === '[object Object]') {
+        externalConfigs = this.configs
       }
-      return Object.assign(defaultConfig, externalConfigs)
+
+      const hasExplicitDark = Object.prototype.hasOwnProperty.call(externalConfigs, 'dark')
+      const explicitDark = externalConfigs.dark === true || externalConfigs.dark === 'true'
+
+      return Object.assign({}, defaultConfig, externalConfigs, {
+        dark: hasExplicitDark ? explicitDark : this.themeDark
+      })
     }
   },
   created() {
+    this.syncTheme()
     this.handleGetOptions()
     if (this.mergedConfigs.autoLoad) {
       this.handleGetComments()
     }
   },
+  mounted() {
+    this.themeObserver = new MutationObserver(this.syncTheme)
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-mode', 'class']
+    })
+  },
+  beforeDestroy() {
+    if (this.themeObserver) {
+      this.themeObserver.disconnect()
+    }
+  },
   methods: {
+    syncTheme() {
+      const root = document.documentElement
+      this.themeDark = root.dataset.mode === 'dark' || root.classList.contains('dark')
+    },
     async handleGetComments() {
       this.list.loading = true
 
